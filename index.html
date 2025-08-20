@@ -3,62 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>禮金紀錄</title>
+  <title>禮金簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 p-6">
-  <div class="max-w-2xl mx-auto space-y-6">
-    <h1 class="text-3xl font-bold text-center">🎁 禮金紀錄</h1>
+  <div class="max-w-3xl mx-auto space-y-6">
+    <h1 class="text-3xl font-bold text-center mb-4">🎁 禮金簿</h1>
 
     <!-- 表單 -->
     <div class="bg-white p-4 rounded-2xl shadow space-y-3">
-      <input id="name" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded"/>
-      <input id="amount" type="number" placeholder="金額" class="w-full p-2 border rounded"/>
-      <select id="type" class="w-full p-2 border rounded">
-        <option value="現金">現金</option>
-        <option value="轉帳">轉帳</option>
-        <option value="禮物">禮物</option>
-      </select>
+      <div class="grid grid-cols-2 gap-3">
+        <input id="name" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded"/>
+        <input id="amount" type="number" placeholder="金額" class="w-full p-2 border rounded"/>
+      </div>
+
+      <!-- 快速金額按鈕 -->
+      <div class="flex gap-2 flex-wrap">
+        <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2000</button>
+        <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">5000</button>
+        <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">6000</button>
+        <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2200</button>
+        <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2600</button>
+      </div>
+
       <input id="note" type="text" placeholder="備註 (選填)" class="w-full p-2 border rounded"/>
-      <button id="addBtn" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">新增紀錄</button>
+      <div class="flex gap-2">
+        <button id="addBtn" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">新增紀錄</button>
+        <button id="exportBtn" class="flex-1 bg-green-500 text-white p-2 rounded hover:bg-green-600">匯出 Excel</button>
+      </div>
     </div>
 
-    <!-- 紀錄列表 -->
-    <div id="recordList" class="space-y-3"></div>
+    <!-- 總金額 -->
+    <div class="bg-white p-3 rounded shadow text-right text-xl font-bold">
+      總金額：<span id="totalAmount">0</span> 元
+    </div>
+
+    <!-- 表格 -->
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white rounded-2xl shadow overflow-hidden">
+        <thead class="bg-blue-100">
+          <tr>
+            <th class="text-left p-3">編號</th>
+            <th class="text-left p-3">姓名</th>
+            <th class="text-left p-3">金額</th>
+            <th class="text-left p-3">形式</th>
+            <th class="text-left p-3">備註</th>
+            <th class="p-3">操作</th>
+          </tr>
+        </thead>
+        <tbody id="recordTable" class="divide-y divide-gray-200"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
     const addBtn = document.getElementById('addBtn');
-    const recordList = document.getElementById('recordList');
+    const exportBtn = document.getElementById('exportBtn');
+    const recordTable = document.getElementById('recordTable');
+    const amountInput = document.getElementById('amount');
+    const totalAmountEl = document.getElementById('totalAmount');
+    const STORAGE_KEY = 'giftRecords';
 
+    // 讀取 localStorage
+    let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+
+    function calculateTotal() {
+      const total = records.reduce((sum, r) => sum + Number(r.amount), 0);
+      totalAmountEl.textContent = total;
+    }
+
+    function renderTable() {
+      recordTable.innerHTML = '';
+      records.forEach((record, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3">${index + 1}</td>
+          <td class="p-3">${record.name}</td>
+          <td class="p-3">${record.amount}</td>
+          <td class="p-3">現金</td>
+          <td class="p-3">${record.note}</td>
+          <td class="p-3 text-center">
+            <button class="bg-red-500 text-white px-2 py-1 rounded">刪除</button>
+          </td>
+        `;
+        tr.querySelector('button').addEventListener('click', () => {
+          records.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          renderTable();
+          calculateTotal();
+        });
+        recordTable.appendChild(tr);
+      });
+      calculateTotal();
+    }
+
+    // 快速金額按鈕
+    document.querySelectorAll('.quick-amount').forEach(btn => {
+      btn.addEventListener('click', () => amountInput.value = btn.textContent);
+    });
+
+    // 新增紀錄
     addBtn.addEventListener('click', () => {
-      const name = document.getElementById('name').value;
-      const amount = document.getElementById('amount').value;
-      const type = document.getElementById('type').value;
-      const note = document.getElementById('note').value;
+      const name = document.getElementById('name').value.trim();
+      const amount = amountInput.value.trim();
+      const note = document.getElementById('note').value.trim();
+      if (!name || !amount) return alert('請輸入姓名和金額');
 
-      if(!name || !amount) return alert('請輸入姓名和金額');
+      records.push({ name, amount, note });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      renderTable();
 
-      const div = document.createElement('div');
-      div.className = 'bg-white p-3 rounded shadow flex justify-between items-center';
-      div.innerHTML = `
-        <div>
-          <p class="font-medium">${name} — ${amount} 元</p>
-          <p class="text-sm text-gray-500">形式：${type} ${note ? `(備註: ${note})` : ''}</p>
-        </div>
-        <button class="bg-red-500 text-white px-2 py-1 rounded">刪除</button>
-      `;
-      const delBtn = div.querySelector('button');
-      delBtn.addEventListener('click', () => div.remove());
-
-      recordList.appendChild(div);
-
-      // 清空表單
       document.getElementById('name').value = '';
-      document.getElementById('amount').value = '';
-      document.getElementById('type').value = '現金';
+      amountInput.value = '';
       document.getElementById('note').value = '';
     });
+
+    // 匯出 Excel (CSV)
+    exportBtn.addEventListener('click', () => {
+      if (records.length === 0) return alert('沒有紀錄可匯出');
+
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "編號,姓名,金額,形式,備註\n";
+      records.forEach((r, i) => {
+        csvContent += `${i + 1},${r.name},${r.amount},現金,${r.note}\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // 初始化
+    renderTable();
   </script>
 </body>
 </html>
