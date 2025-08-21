@@ -3,12 +3,10 @@
 <head>
   <!-- 讓 iOS Safari 以全螢幕開啟 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  
   <!-- 狀態列樣式，可選 default / black / black-translucent -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  
   <!-- 加入主畫面時的顯示名稱 -->
-  <meta name="apple-mobile-web-app-title" content="我的App">
+  <meta name="apple-mobile-web-app-title" content="禮金簿">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>禮金簿</title>
@@ -68,7 +66,7 @@
             <th class="text-left p-3">編號</th>
             <th class="text-left p-3">姓名</th>
             <th class="text-left p-3">金額</th>
-            <th class="text-left p-3">形式</th>
+            <th class="text-left p-3">分類</th>
             <th class="text-left p-3">備註</th>
             <th class="p-3">操作</th>
           </tr>
@@ -84,6 +82,8 @@
     const recordTable = document.getElementById('recordTable');
     const amountInput = document.getElementById('amount');
     const totalAmountEl = document.getElementById('totalAmount');
+    const categoryInput = document.getElementById('category');
+    const receivedCakeInput = document.getElementById('receivedCake');
     const STORAGE_KEY = 'giftRecords';
 
     // 讀取 localStorage
@@ -94,99 +94,6 @@
       totalAmountEl.textContent = total;
     }
 
-    function renderTable() {
-      recordTable.innerHTML = '';
-      records.forEach((record, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="p-3">${index + 1}</td>
-          <td class="p-3">${record.name}</td>
-          <td class="p-3">${record.amount}</td>
-          <td class="p-3">現金</td>
-          <td class="p-3">${record.note}</td>
-          <td class="p-3 text-center">
-            <button class="bg-red-500 text-white px-2 py-1 rounded">刪除</button>
-          </td>
-        `;
-        tr.querySelector('button').addEventListener('click', () => {
-          records.splice(index, 1);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-          renderTable();
-          calculateTotal();
-        });
-        recordTable.appendChild(tr);
-      });
-      calculateTotal();
-    }
-
-    // 快速金額按鈕
-    document.querySelectorAll('.quick-amount').forEach(btn => {
-      btn.addEventListener('click', () => amountInput.value = btn.textContent);
-    });
-
-    // 新增紀錄
-    addBtn.addEventListener('click', () => {
-      const name = document.getElementById('name').value.trim();
-      const amount = amountInput.value.trim();
-      const note = document.getElementById('note').value.trim();
-      if (!name || !amount) return alert('請輸入姓名和金額');
-
-      records.push({ name, amount, note });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-      renderTable();
-
-      document.getElementById('name').value = '';
-      amountInput.value = '';
-      document.getElementById('note').value = '';
-    });
-
-    // 匯出 Excel (CSV)
-    exportBtn.addEventListener('click', () => {
-      if (records.length === 0) return alert('沒有紀錄可匯出');
-    
-      let csvContent = "\uFEFF"; // 加 BOM
-      csvContent += "編號,姓名,金額,形式,備註\n";
-      records.forEach((r, i) => {
-        csvContent += `${i + 1},${r.name},${r.amount},現金,${r.note}\n`;
-      });
-    
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    });
-
-    // 初始化
-    renderTable();
-
-    const categoryInput = document.getElementById('category');
-    const receivedCakeInput = document.getElementById('receivedCake');
-    
-    // 新增紀錄
-    addBtn.addEventListener('click', () => {
-      const name = document.getElementById('name').value.trim();
-      const amount = amountInput.value.trim();
-      const note = document.getElementById('note').value.trim();
-      const category = categoryInput.value;
-      const receivedCake = receivedCakeInput.checked;
-    
-      if (!name || !amount) return alert('請輸入姓名和金額');
-    
-      records.push({ name, amount, note, category, receivedCake });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-      renderTable();
-    
-      document.getElementById('name').value = '';
-      amountInput.value = '';
-      document.getElementById('note').value = '';
-      receivedCakeInput.checked = false;
-    });
-    
     // 渲染表格
     function renderTable() {
       recordTable.innerHTML = '';
@@ -204,14 +111,14 @@
             <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
           </td>
         `;
-    
+
         // 刪除
         tr.querySelectorAll('button')[1].addEventListener('click', () => {
           records.splice(index, 1);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
           renderTable();
         });
-    
+
         // 修改
         tr.querySelectorAll('button')[0].addEventListener('click', () => {
           document.getElementById('name').value = record.name;
@@ -219,34 +126,59 @@
           document.getElementById('note').value = record.note;
           categoryInput.value = record.category;
           receivedCakeInput.checked = record.receivedCake;
-    
+
           // 刪除原本紀錄，按新增即可覆蓋
           records.splice(index, 1);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
           renderTable();
         });
-    
+
         // 收餅勾選即時更新
         tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
           record.receivedCake = e.target.checked;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
         });
-    
+
         recordTable.appendChild(tr);
       });
       calculateTotal();
     }
-    
-    // 匯出 Excel
+
+    // 快速金額按鈕
+    document.querySelectorAll('.quick-amount').forEach(btn => {
+      btn.addEventListener('click', () => amountInput.value = btn.textContent);
+    });
+
+    // 新增紀錄（只保留一個事件）
+    addBtn.addEventListener('click', () => {
+      const name = document.getElementById('name').value.trim();
+      const amount = amountInput.value.trim();
+      const note = document.getElementById('note').value.trim();
+      const category = categoryInput.value;
+      const receivedCake = receivedCakeInput.checked;
+
+      if (!name || !amount) return alert('請輸入姓名和金額');
+
+      records.push({ name, amount, note, category, receivedCake });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      renderTable();
+
+      document.getElementById('name').value = '';
+      amountInput.value = '';
+      document.getElementById('note').value = '';
+      receivedCakeInput.checked = false;
+    });
+
+    // 匯出 Excel（只保留一個事件）
     exportBtn.addEventListener('click', () => {
       if (records.length === 0) return alert('沒有紀錄可匯出');
-    
+
       let csvContent = "\uFEFF"; // BOM
       csvContent += "編號,姓名,金額,分類,備註,收餅\n";
       records.forEach((r, i) => {
         csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
       });
-    
+
       const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -258,6 +190,8 @@
       URL.revokeObjectURL(url);
     });
 
+    // 初始化
+    renderTable();
   </script>
 </body>
 </html>
