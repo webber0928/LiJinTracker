@@ -34,6 +34,20 @@
         <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2600</button>
       </div>
 
+      <!-- 新增分類下拉選單 -->
+      <select id="category" class="w-full p-2 border rounded">
+        <option value="新娘親友">新娘親友</option>
+        <option value="新郎親友">新郎親友</option>
+        <option value="男方父母朋友">男方父母朋友</option>
+        <option value="女方父母朋友">女方父母朋友</option>
+      </select>
+      
+      <!-- 勾選收餅 -->
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="receivedCake"/>
+        收餅
+      </label>
+
       <input id="note" type="text" placeholder="備註 (選填)" class="w-full p-2 border rounded"/>
       <div class="flex gap-2">
         <button id="addBtn" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">新增紀錄</button>
@@ -149,6 +163,101 @@
 
     // 初始化
     renderTable();
+
+    const categoryInput = document.getElementById('category');
+    const receivedCakeInput = document.getElementById('receivedCake');
+    
+    // 新增紀錄
+    addBtn.addEventListener('click', () => {
+      const name = document.getElementById('name').value.trim();
+      const amount = amountInput.value.trim();
+      const note = document.getElementById('note').value.trim();
+      const category = categoryInput.value;
+      const receivedCake = receivedCakeInput.checked;
+    
+      if (!name || !amount) return alert('請輸入姓名和金額');
+    
+      records.push({ name, amount, note, category, receivedCake });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+      renderTable();
+    
+      document.getElementById('name').value = '';
+      amountInput.value = '';
+      document.getElementById('note').value = '';
+      receivedCakeInput.checked = false;
+    });
+    
+    // 渲染表格
+    function renderTable() {
+      recordTable.innerHTML = '';
+      records.forEach((record, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="p-3">${index + 1}</td>
+          <td class="p-3">${record.name}</td>
+          <td class="p-3">${record.amount}</td>
+          <td class="p-3">${record.category}</td>
+          <td class="p-3">${record.note}</td>
+          <td class="p-3 text-center">
+            <label><input type="checkbox" class="cake-checkbox" ${record.receivedCake ? 'checked' : ''}/> 收餅</label>
+            <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
+            <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
+          </td>
+        `;
+    
+        // 刪除
+        tr.querySelectorAll('button')[1].addEventListener('click', () => {
+          records.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          renderTable();
+        });
+    
+        // 修改
+        tr.querySelectorAll('button')[0].addEventListener('click', () => {
+          document.getElementById('name').value = record.name;
+          amountInput.value = record.amount;
+          document.getElementById('note').value = record.note;
+          categoryInput.value = record.category;
+          receivedCakeInput.checked = record.receivedCake;
+    
+          // 刪除原本紀錄，按新增即可覆蓋
+          records.splice(index, 1);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+          renderTable();
+        });
+    
+        // 收餅勾選即時更新
+        tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
+          record.receivedCake = e.target.checked;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        });
+    
+        recordTable.appendChild(tr);
+      });
+      calculateTotal();
+    }
+    
+    // 匯出 Excel
+    exportBtn.addEventListener('click', () => {
+      if (records.length === 0) return alert('沒有紀錄可匯出');
+    
+      let csvContent = "\uFEFF"; // BOM
+      csvContent += "編號,姓名,金額,分類,備註,收餅\n";
+      records.forEach((r, i) => {
+        csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
+      });
+    
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+
   </script>
 </body>
 </html>
