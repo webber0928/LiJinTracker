@@ -77,121 +77,204 @@
   </div>
 
   <script>
-    const addBtn = document.getElementById('addBtn');
-    const exportBtn = document.getElementById('exportBtn');
-    const recordTable = document.getElementById('recordTable');
-    const amountInput = document.getElementById('amount');
-    const totalAmountEl = document.getElementById('totalAmount');
-    const categoryInput = document.getElementById('category');
-    const receivedCakeInput = document.getElementById('receivedCake');
-    const STORAGE_KEY = 'giftRecords';
+  // Google Apps Script API 端點
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzf9_L7ezUi_AY9esJdXpY62RIxa1LCtUj_XF4g-TVQWZP9PK9isf59CubEICDr8Ezc/exec';
+  const STORAGE_KEY = 'giftRecords';         // 已同步/全部資料
+  const PENDING_KEY = 'pendingGiftRecords';  // 尚未同步的本地資料
 
-    // 讀取 localStorage
-    let records = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  const addBtn = document.getElementById('addBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const recordTable = document.getElementById('recordTable');
+  const amountInput = document.getElementById('amount');
+  const totalAmountEl = document.getElementById('totalAmount');
+  const categoryInput = document.getElementById('category');
+  const receivedCakeInput = document.getElementById('receivedCake');
 
-    function calculateTotal() {
-      const total = records.reduce((sum, r) => sum + Number(r.amount), 0);
-      totalAmountEl.textContent = total;
+  // 取得所有 API 資料
+  async function fetchApiRecords() {
+    try {
+      const res = await fetch(API_URL);
+      const result = await res.json();
+      if (result.success) return result.data.map(r => ({
+        name: r['姓名'],
+        amount: r['金額'],
+        note: r['備註'],
+        category: r['分類'],
+        receivedCake: r['收餅'] === '已收'
+      }));
+      else return [];
+    } catch (e) {
+      return [];
     }
+  }
 
-    // 渲染表格
-    function renderTable() {
-      recordTable.innerHTML = '';
-      records.forEach((record, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="p-3">${index + 1}</td>
-          <td class="p-3">${record.name}</td>
-          <td class="p-3">${record.amount}</td>
-          <td class="p-3">${record.category}</td>
-          <td class="p-3">${record.note}</td>
-          <td class="p-3 text-center">
-            <label><input type="checkbox" class="cake-checkbox" ${record.receivedCake ? 'checked' : ''}/> 收餅</label>
-            <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
-            <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
-          </td>
-        `;
+  // 取得 localStorage 尚未同步資料
+  function getPendingRecords() {
+    return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+  }
 
-        // 刪除
-        tr.querySelectorAll('button')[1].addEventListener('click', () => {
-          records.splice(index, 1);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-          renderTable();
-        });
+  // 存入 localStorage pending
+  function addPendingRecord(record) {
+    const arr = getPendingRecords();
+    arr.push(record);
+    localStorage.setItem(PENDING_KEY, JSON.stringify(arr));
+  }
 
-        // 修改
-        tr.querySelectorAll('button')[0].addEventListener('click', () => {
-          document.getElementById('name').value = record.name;
-          amountInput.value = record.amount;
-          document.getElementById('note').value = record.note;
-          categoryInput.value = record.category;
-          receivedCakeInput.checked = record.receivedCake;
+  // 存入 localStorage 全部（已同步資料）
+  function setSyncedRecords(records) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  }
+  function getSyncedRecords() {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  }
 
-          // 刪除原本紀錄，按新增即可覆蓋
-          records.splice(index, 1);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-          renderTable();
-        });
+  // 合併顯示（API已同步 + 本地尚未同步）
+  async function renderTable() {
+    const syncedRecords = getSyncedRecords();
+    const pendingRecords = getPendingRecords();
+    const allRecords = [...syncedRecords, ...pendingRecords];
+    recordTable.innerHTML = '';
+    let total = 0;
+    allRecords.forEach((record, index) => {
+      total += Number(record.amount) || 0;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-3">${index + 1}</td>
+        <td class="p-3">${record.name}</td>
+        <td class="p-3">${record.amount}</td>
+        <td class="p-3">${record.category}</td>
+        <td class="p-3">${record.note}</td>
+        <td class="p-3 text-center">
+          <label>
+            <input type="checkbox" class="cake-checkbox" ${record.receivedCake ? 'checked' : ''}/> 收餅
+          </label>
+          <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
+          <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
+          ${index >= syncedRecords.length ? '<span style="color:red">(待同步)</span>' : ''}
+        </td>
+      `;
 
-        // 收餅勾選即時更新
-        tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
-          record.receivedCake = e.target.checked;
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-        });
-
-        recordTable.appendChild(tr);
-      });
-      calculateTotal();
-    }
-
-    // 快速金額按鈕
-    document.querySelectorAll('.quick-amount').forEach(btn => {
-      btn.addEventListener('click', () => amountInput.value = btn.textContent);
-    });
-
-    // 新增紀錄（只保留一個事件）
-    addBtn.addEventListener('click', () => {
-      const name = document.getElementById('name').value.trim();
-      const amount = amountInput.value.trim();
-      const note = document.getElementById('note').value.trim();
-      const category = categoryInput.value;
-      const receivedCake = receivedCakeInput.checked;
-
-      if (!name || !amount) return alert('請輸入姓名和金額');
-
-      records.push({ name, amount, note, category, receivedCake });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-      renderTable();
-
-      document.getElementById('name').value = '';
-      amountInput.value = '';
-      document.getElementById('note').value = '';
-      receivedCakeInput.checked = false;
-    });
-
-    // 匯出 Excel（只保留一個事件）
-    exportBtn.addEventListener('click', () => {
-      if (records.length === 0) return alert('沒有紀錄可匯出');
-
-      let csvContent = "\uFEFF"; // BOM
-      csvContent += "編號,姓名,金額,分類,備註,收餅\n";
-      records.forEach((r, i) => {
-        csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
+      // 刪除
+      tr.querySelectorAll('button')[1].addEventListener('click', () => {
+        if (index < syncedRecords.length) {
+          alert('已同步資料不可直接刪除（如需此功能請擴充 API）');
+          return;
+        }
+        pendingRecords.splice(index - syncedRecords.length, 1);
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords));
+        renderTable();
       });
 
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    });
+      // 修改
+      tr.querySelectorAll('button')[0].addEventListener('click', () => {
+        document.getElementById('name').value = record.name;
+        amountInput.value = record.amount;
+        document.getElementById('note').value = record.note;
+        categoryInput.value = record.category;
+        receivedCakeInput.checked = record.receivedCake;
+        // 刪除原本紀錄，按新增即可覆蓋
+        if (index < syncedRecords.length) {
+          alert('已同步資料不可直接修改（如需此功能請擴充 API）');
+          return;
+        }
+        pendingRecords.splice(index - syncedRecords.length, 1);
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords));
+        renderTable();
+      });
 
-    // 初始化
+      // 收餅勾選即時更新
+      tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
+        record.receivedCake = e.target.checked;
+        if (index < syncedRecords.length) {
+          alert('已同步資料不可直接修改（如需此功能請擴充 API）');
+          return;
+        }
+        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords));
+      });
+
+      recordTable.appendChild(tr);
+    });
+    totalAmountEl.textContent = total;
+  }
+
+  // 快速金額按鈕
+  document.querySelectorAll('.quick-amount').forEach(btn => {
+    btn.addEventListener('click', () => amountInput.value = btn.textContent);
+  });
+
+  // 新增紀錄（先存 localStorage pending，立即顯示）
+  addBtn.addEventListener('click', () => {
+    const name = document.getElementById('name').value.trim();
+    const amount = amountInput.value.trim();
+    const note = document.getElementById('note').value.trim();
+    const category = categoryInput.value;
+    const receivedCake = receivedCakeInput.checked;
+    if (!name || !amount) return alert('請輸入姓名和金額');
+    addPendingRecord({ name, amount, note, category, receivedCake });
     renderTable();
-  </script>
+    document.getElementById('name').value = '';
+    amountInput.value = '';
+    document.getElementById('note').value = '';
+    receivedCakeInput.checked = false;
+  });
+
+  // 匯出 Excel（全部資料：API已同步+pending）
+  exportBtn.addEventListener('click', () => {
+    const records = [...getSyncedRecords(), ...getPendingRecords()];
+    if (records.length === 0) return alert('沒有紀錄可匯出');
+    let csvContent = "\uFEFF"; // BOM
+    csvContent += "編號,姓名,金額,分類,備註,收餅\n";
+    records.forEach((r, i) => {
+      csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
+    });
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+
+  // 同步 pending 到 API（每 10 秒自動嘗試）
+  async function syncPendingToApi() {
+    let pending = getPendingRecords();
+    if (!pending.length) return;
+    let syncedRecords = getSyncedRecords();
+    for (let i = 0; i < pending.length; ) {
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          body: JSON.stringify(pending[i]),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await res.json();
+        if (result.success) {
+          // 同步成功，加入已同步紀錄，移除 pending
+          syncedRecords.push(pending[i]);
+          pending.splice(i, 1);
+          setSyncedRecords(syncedRecords);
+        } else {
+          i++;
+        }
+      } catch (e) {
+        i++;
+      }
+    }
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    renderTable();
+  }
+  setInterval(syncPendingToApi, 10000);
+
+  // 首次啟動時，先載入 API 紀錄到 localStorage
+  async function init() {
+    const apiRecords = await fetchApiRecords();
+    setSyncedRecords(apiRecords);
+    renderTable();
+  }
+  init();
+</script>
 </body>
 </html>
