@@ -93,7 +93,10 @@
   // 取得所有 API 資料
   async function fetchApiRecords() {
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL{
+            method: 'GET',
+            mode: 'no-cors'
+        });
       const result = await res.json();
       if (result.success) return result.data.map(r => ({
         name: r['姓名'],
@@ -247,6 +250,7 @@
       try {
         const res = await fetch(API_URL, {
           method: 'POST',
+          mode: 'no-cors',
           body: JSON.stringify(pending[i]),
           headers: { 'Content-Type': 'application/json' }
         });
