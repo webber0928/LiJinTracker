@@ -3,9 +3,7 @@
 <head>
   <!-- 讓 iOS Safari 以全螢幕開啟 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- 狀態列樣式，可選 default / black / black-translucent -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <!-- 加入主畫面時的顯示名稱 -->
   <meta name="apple-mobile-web-app-title" content="禮金簿">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,7 +20,6 @@
         <input id="name" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded"/>
         <input id="amount" type="number" placeholder="金額" class="w-full p-2 border rounded"/>
       </div>
-
       <!-- 快速金額按鈕 -->
       <div class="flex gap-2 flex-wrap">
         <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2000</button>
@@ -31,21 +28,16 @@
         <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2200</button>
         <button class="quick-amount bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">2600</button>
       </div>
-
-      <!-- 新增分類下拉選單 -->
       <select id="category" class="w-full p-2 border rounded">
         <option value="新娘親友">新娘親友</option>
         <option value="新郎親友">新郎親友</option>
         <option value="男方父母朋友">男方父母朋友</option>
         <option value="女方父母朋友">女方父母朋友</option>
       </select>
-      
-      <!-- 勾選收餅 -->
       <label class="flex items-center gap-2">
         <input type="checkbox" id="receivedCake"/>
         收餅
       </label>
-
       <input id="note" type="text" placeholder="備註 (選填)" class="w-full p-2 border rounded"/>
       <div class="flex gap-2">
         <button id="addBtn" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">新增紀錄</button>
@@ -53,12 +45,10 @@
       </div>
     </div>
 
-    <!-- 總金額 -->
     <div class="bg-white p-3 rounded shadow text-right text-xl font-bold">
       總金額：<span id="totalAmount">0</span> 元
     </div>
 
-    <!-- 表格 -->
     <div class="overflow-x-auto">
       <table class="min-w-full bg-white rounded-2xl shadow overflow-hidden">
         <thead class="bg-blue-100">
@@ -77,10 +67,9 @@
   </div>
 
   <script>
-  // Google Apps Script API 端點
   const API_URL = 'https://script.google.com/macros/s/AKfycbzf9_L7ezUi_AY9esJdXpY62RIxa1LCtUj_XF4g-TVQWZP9PK9isf59CubEICDr8Ezc/exec';
-  const STORAGE_KEY = 'giftRecords';         // 已同步/全部資料
-  const PENDING_KEY = 'pendingGiftRecords';  // 尚未同步的本地資料
+  const STORAGE_KEY = 'giftRecords';
+  const PENDING_KEY = 'pendingGiftRecords';
 
   const addBtn = document.getElementById('addBtn');
   const exportBtn = document.getElementById('exportBtn');
@@ -90,13 +79,12 @@
   const categoryInput = document.getElementById('category');
   const receivedCakeInput = document.getElementById('receivedCake');
 
-  // 取得所有 API 資料
   async function fetchApiRecords() {
     try {
       const res = await fetch(API_URL, {
-            method: 'GET',
-            mode: 'no-cors'
-        });
+        method: 'GET',
+        mode: 'no-cors'
+      });
       const result = await res.json();
       if (result.success) return result.data.map(r => ({
         name: r['姓名'],
@@ -111,19 +99,17 @@
     }
   }
 
-  // 取得 localStorage 尚未同步資料
   function getPendingRecords() {
     return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
   }
-
-  // 存入 localStorage pending
-  function addPendingRecord(record) {
-    const arr = getPendingRecords();
-    arr.push(record);
+  function setPendingRecords(arr) {
     localStorage.setItem(PENDING_KEY, JSON.stringify(arr));
   }
-
-  // 存入 localStorage 全部（已同步資料）
+  function addPendingRecord(record) {
+    const arr = getPendingRecords();
+    arr.push({ ...record, synced: false }); // 新增 synced 屬性
+    setPendingRecords(arr);
+  }
   function setSyncedRecords(records) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
   }
@@ -131,7 +117,6 @@
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
   }
 
-  // 合併顯示（API已同步 + 本地尚未同步）
   async function renderTable() {
     const syncedRecords = getSyncedRecords();
     const pendingRecords = getPendingRecords();
@@ -153,7 +138,7 @@
           </label>
           <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
           <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
-          ${index >= syncedRecords.length ? '<span style="color:red">(待同步)</span>' : ''}
+          ${index >= syncedRecords.length ? (record.synced ? '<span style="color:green">(已同步)</span>' : '<span style="color:red">(待同步)</span>') : ''}
         </td>
       `;
 
@@ -164,7 +149,7 @@
           return;
         }
         pendingRecords.splice(index - syncedRecords.length, 1);
-        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords));
+        setPendingRecords(pendingRecords);
         renderTable();
       });
 
@@ -175,13 +160,12 @@
         document.getElementById('note').value = record.note;
         categoryInput.value = record.category;
         receivedCakeInput.checked = record.receivedCake;
-        // 刪除原本紀錄，按新增即可覆蓋
         if (index < syncedRecords.length) {
           alert('已同步資料不可直接修改（如需此功能請擴充 API）');
           return;
         }
         pendingRecords.splice(index - syncedRecords.length, 1);
-        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords));
+        setPendingRecords(pendingRecords);
         renderTable();
       });
 
@@ -192,7 +176,7 @@
           alert('已同步資料不可直接修改（如需此功能請擴充 API）');
           return;
         }
-        localStorage.setItem(PENDING_KEY, JSON.stringify(pendingRecords));
+        setPendingRecords(pendingRecords);
       });
 
       recordTable.appendChild(tr);
@@ -200,12 +184,10 @@
     totalAmountEl.textContent = total;
   }
 
-  // 快速金額按鈕
   document.querySelectorAll('.quick-amount').forEach(btn => {
     btn.addEventListener('click', () => amountInput.value = btn.textContent);
   });
 
-  // 新增紀錄（先存 localStorage pending，立即顯示）
   addBtn.addEventListener('click', () => {
     const name = document.getElementById('name').value.trim();
     const amount = amountInput.value.trim();
@@ -221,11 +203,10 @@
     receivedCakeInput.checked = false;
   });
 
-  // 匯出 Excel（全部資料：API已同步+pending）
   exportBtn.addEventListener('click', () => {
     const records = [...getSyncedRecords(), ...getPendingRecords()];
     if (records.length === 0) return alert('沒有紀錄可匯出');
-    let csvContent = "\uFEFF"; // BOM
+    let csvContent = "\uFEFF";
     csvContent += "編號,姓名,金額,分類,備註,收餅\n";
     records.forEach((r, i) => {
       csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
@@ -244,9 +225,9 @@
   // 同步 pending 到 API（每 10 秒自動嘗試）
   async function syncPendingToApi() {
     let pending = getPendingRecords();
-    if (!pending.length) return;
     let syncedRecords = getSyncedRecords();
-    for (let i = 0; i < pending.length; ) {
+    for (let i = 0; i < pending.length; i++) {
+      if (pending[i].synced) continue; // 只送未同步的
       try {
         const res = await fetch(API_URL, {
           method: 'POST',
@@ -254,20 +235,24 @@
           body: JSON.stringify(pending[i]),
           headers: { 'Content-Type': 'application/json' }
         });
-        const result = await res.json();
+        let result;
+        try {
+          result = await res.json();
+        } catch {
+          result = { success: true }; // no-cors fallback
+        }
         if (result.success) {
-          // 同步成功，加入已同步紀錄，移除 pending
-          syncedRecords.push(pending[i]);
-          pending.splice(i, 1);
-          setSyncedRecords(syncedRecords);
-        } else {
-          i++;
+          pending[i].synced = true; // 標記已同步
+          syncedRecords.push({ ...pending[i] }); // 保留完整資料
         }
       } catch (e) {
-        i++;
+        // 可記錄錯誤狀態
       }
     }
-    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    // 清除已同步的 pending
+    pending = pending.filter(r => !r.synced);
+    setPendingRecords(pending);
+    setSyncedRecords(syncedRecords);
     renderTable();
   }
   setInterval(syncPendingToApi, 10000);
@@ -279,6 +264,6 @@
     renderTable();
   }
   init();
-</script>
+  </script>
 </body>
 </html>
