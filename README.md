@@ -39,6 +39,10 @@
 
 3. 可在瀏覽器開啟 http://localhost:8080 查看服務。
 
+
+## 建立自己的 ico
+
+https://realfavicongenerator.net/
 ---
 
 如需自訂環境變數，請將 `.env` 檔案一併複製到容器內。
