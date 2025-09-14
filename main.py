@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -42,7 +44,20 @@ class GiftRecordCreate(BaseModel):
 class GiftRecordOut(GiftRecordCreate):
     id: int
 
-app = FastAPI()
+app = FastAPI(docs_url=None)  # 關閉預設 /docs
+
+# HTTP Basic Auth 設定
+security = HTTPBasic()
+def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    # 帳號密碼可自訂
+    if credentials.username != "admin" or credentials.password != "000000":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+# 受保護的 /docs 路徑
+@app.get("/docs", include_in_schema=False)
+def custom_swagger_ui(credentials: HTTPBasicCredentials = Depends(security)):
+    check_auth(credentials)
+    return get_swagger_ui_html(openapi_url=app.openapi_url, title="API Docs")
 
 # 從 .env 讀取 CORS_ORIGINS，格式為逗號分隔字串
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost,http://127.0.0.1,https://webber0928.github.io,https://webber0928.github.io/LiJinTracker/")
