@@ -1,7 +1,11 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
   <!-- 讓 iOS Safari 以全螢幕開啟 -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="禮金簿">
@@ -10,15 +14,23 @@
   <title>禮金簿</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body class="bg-gray-50 p-6">
-  <div class="max-w-3xl mx-auto space-y-6">
+  <div id="loginBox" class="max-w-sm mx-auto mt-20 bg-white p-6 rounded-2xl shadow flex flex-col gap-4">
+    <h2 class="text-2xl font-bold text-center">登入</h2>
+    <input id="loginUser" type="text" placeholder="帳號 (girl/boy)" class="w-full p-2 border rounded" />
+    <input id="loginPass" type="password" placeholder="密碼" class="w-full p-2 border rounded" />
+    <button id="loginBtn" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600">登入</button>
+    <div id="loginMsg" class="text-red-500 text-center"></div>
+  </div>
+  <div id="mainBox" class="max-w-3xl mx-auto space-y-6" style="display:none">
     <h1 class="text-3xl font-bold text-center mb-4">🎁 禮金簿</h1>
 
     <!-- 表單 -->
     <div class="bg-white p-4 rounded-2xl shadow space-y-3">
       <div class="grid grid-cols-2 gap-3">
-        <input id="name" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded"/>
-        <input id="amount" type="number" placeholder="金額" class="w-full p-2 border rounded"/>
+        <input id="name" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded" />
+        <input id="amount" type="number" placeholder="金額" class="w-full p-2 border rounded" />
       </div>
       <!-- 快速金額按鈕 -->
       <div class="flex gap-2 flex-wrap">
@@ -35,10 +47,10 @@
         <option value="女方父母朋友">女方父母朋友</option>
       </select>
       <label class="flex items-center gap-2">
-        <input type="checkbox" id="receivedCake"/>
+        <input type="checkbox" id="receivedCake" />
         收餅
       </label>
-      <input id="note" type="text" placeholder="備註 (選填)" class="w-full p-2 border rounded"/>
+      <input id="note" type="text" placeholder="備註 (選填)" class="w-full p-2 border rounded" />
       <div class="flex gap-2">
         <button id="addBtn" class="flex-1 bg-blue-500 text-white p-2 rounded hover:bg-blue-600">新增紀錄</button>
         <button id="exportBtn" class="flex-1 bg-green-500 text-white p-2 rounded hover:bg-green-600">匯出 Excel</button>
@@ -46,7 +58,9 @@
     </div>
 
     <div class="bg-white p-3 rounded shadow text-right text-xl font-bold">
-      總金額：<span id="totalAmount">0</span> 元
+      <span id="totalAmountBox" style="display:none">
+        總金額：<span id="totalAmount">0</span> 元
+      </span>
     </div>
 
     <div class="overflow-x-auto">
@@ -67,66 +81,103 @@
   </div>
 
   <script>
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzf9_L7ezUi_AY9esJdXpY62RIxa1LCtUj_XF4g-TVQWZP9PK9isf59CubEICDr8Ezc/exec';
-  const STORAGE_KEY = 'giftRecords';
-  const PENDING_KEY = 'pendingGiftRecords';
+    // 先宣告所有變數與函式
+    // rot13 編碼密碼
+    const USERS = {
+      girl: 'nqzva',
+      boy: 'nqzva',
+      admin: 'nqzva',
+    };
 
-  const addBtn = document.getElementById('addBtn');
-  const exportBtn = document.getElementById('exportBtn');
-  const recordTable = document.getElementById('recordTable');
-  const amountInput = document.getElementById('amount');
-  const totalAmountEl = document.getElementById('totalAmount');
-  const categoryInput = document.getElementById('category');
-  const receivedCakeInput = document.getElementById('receivedCake');
-
-  async function fetchApiRecords() {
-    try {
-      const res = await fetch(API_URL, {
-        method: 'GET',
-        mode: 'no-cors'
-      });
-      const result = await res.json();
-      if (result.success) return result.data.map(r => ({
-        name: r['姓名'],
-        amount: r['金額'],
-        note: r['備註'],
-        category: r['分類'],
-        receivedCake: r['收餅'] === '已收'
-      }));
-      else return [];
-    } catch (e) {
-      return [];
+    function rot13(s) {
+      return s.replace(/[a-zA-Z]/g, function (c) { let a = c.charCodeAt(0), b = c <= 'Z' ? 90 : 122; a += 13; return String.fromCharCode(b >= a ? a : a - 26); });
     }
-  }
+    const API_BASE = 'http://20.243.195.247:8080';
+    const API_URL = API_BASE + '/records/';
+    const STORAGE_KEY = 'giftRecords';
+    const PENDING_KEY = 'pendingGiftRecords';
+    const loginBox = document.getElementById('loginBox');
+    const mainBox = document.getElementById('mainBox');
+    const loginUser = document.getElementById('loginUser');
+    const loginPass = document.getElementById('loginPass');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginMsg = document.getElementById('loginMsg');
+    const addBtn = document.getElementById('addBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const recordTable = document.getElementById('recordTable');
+    const amountInput = document.getElementById('amount');
+    const totalAmountEl = document.getElementById('totalAmount');
+    const categoryInput = document.getElementById('category');
+    const receivedCakeInput = document.getElementById('receivedCake');
 
-  function getPendingRecords() {
-    return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
-  }
-  function setPendingRecords(arr) {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(arr));
-  }
-  function addPendingRecord(record) {
-    const arr = getPendingRecords();
-    arr.push({ ...record, synced: false }); // 新增 synced 屬性
-    setPendingRecords(arr);
-  }
-  function setSyncedRecords(records) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  }
-  function getSyncedRecords() {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  }
-
-  async function renderTable() {
-    const syncedRecords = getSyncedRecords();
-    const pendingRecords = getPendingRecords();
-    const allRecords = [...syncedRecords, ...pendingRecords];
-    recordTable.innerHTML = '';
-    let total = 0;
-    allRecords.forEach((record, index) => {
-      total += Number(record.amount) || 0;
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
+    function getPendingRecords() {
+      return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]');
+    }
+    function setPendingRecords(arr) {
+      localStorage.setItem(PENDING_KEY, JSON.stringify(arr));
+    }
+    function addPendingRecord(record) {
+      const arr = getPendingRecords();
+      arr.push({ ...record, synced: false }); // 新增 synced 屬性
+      setPendingRecords(arr);
+    }
+    function setSyncedRecords(records) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    }
+    function getSyncedRecords() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+    async function fetchApiRecords(selectedCategories = null) {
+      try {
+        let url = API_URL;
+        const loginUserVal = localStorage.getItem('loginUser');
+        let categories = [];
+        if (loginUserVal === 'boy') {
+          categories = ['新郎親友', '男方父母朋友'];
+        } else if (loginUserVal === 'girl') {
+          categories = ['新娘親友', '女方父母朋友'];
+        } else if (loginUserVal === 'admin') {
+          if (selectedCategories && selectedCategories.length > 0) {
+            categories = selectedCategories;
+          }
+        }
+        if (categories.length > 0) {
+          url += '?category=' + encodeURIComponent(categories.join(','));
+        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('API error');
+        const result = await res.json();
+        return result.map(r => ({
+          id: r.id,
+          name: r.name,
+          amount: r.amount,
+          note: r.note,
+          category: r.category,
+          receivedCake: r.received_cake
+        }));
+      } catch (e) {
+        return [];
+      }
+    }
+    async function renderTable() {
+      // 先取得本地已同步與 pending
+      const syncedRecords = getSyncedRecords();
+      const pendingRecords = getPendingRecords();
+      // API 資料優先，若 API 不通則用本地
+      let apiRecords = [];
+      try {
+        apiRecords = await fetchApiRecords();
+        setSyncedRecords(apiRecords); // 同步本地
+      } catch {
+        apiRecords = syncedRecords;
+      }
+      const allRecords = [...apiRecords, ...pendingRecords].reverse();
+      recordTable.innerHTML = '';
+      let total = 0;
+      allRecords.forEach((record, index) => {
+        total += Number(record.amount) || 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
         <td class="p-3">${index + 1}</td>
         <td class="p-3">${record.name}</td>
         <td class="p-3">${record.amount}</td>
@@ -138,132 +189,375 @@
           </label>
           <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
           <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
-          ${index >= syncedRecords.length ? (record.synced ? '<span style="color:green">(已同步)</span>' : '<span style="color:red">(待同步)</span>') : ''}
+          ${index >= apiRecords.length ? (record.synced ? '<span style="color:green">(已同步)</span>' : '<span style="color:red">(待同步)</span>') : ''}
         </td>
       `;
 
-      // 刪除
-      tr.querySelectorAll('button')[1].addEventListener('click', () => {
-        if (index < syncedRecords.length) {
-          alert('已同步資料不可直接刪除（如需此功能請擴充 API）');
-          return;
-        }
-        pendingRecords.splice(index - syncedRecords.length, 1);
-        setPendingRecords(pendingRecords);
-        renderTable();
-      });
+        // 刪除
+        tr.querySelectorAll('button')[1].addEventListener('click', async () => {
+          if (index < apiRecords.length) {
+            // 直接呼叫 DELETE API
+            if (!confirm('確定要刪除這筆資料嗎？')) return;
+            try {
+              const res = await fetch(API_URL + record.id, {
+                method: 'DELETE'
+              });
+              if (!res.ok) throw new Error('API 刪除失敗');
+              await renderTable();
+            } catch (e) {
+              alert('刪除失敗，請稍後再試');
+            }
+            return;
+          }
+          // 本地 pending 資料直接刪除
+          pendingRecords.splice(index - apiRecords.length, 1);
+          setPendingRecords(pendingRecords);
+          renderTable();
+        });
 
-      // 修改
-      tr.querySelectorAll('button')[0].addEventListener('click', () => {
-        document.getElementById('name').value = record.name;
-        amountInput.value = record.amount;
-        document.getElementById('note').value = record.note;
-        categoryInput.value = record.category;
-        receivedCakeInput.checked = record.receivedCake;
-        if (index < syncedRecords.length) {
-          alert('已同步資料不可直接修改（如需此功能請擴充 API）');
-          return;
-        }
-        pendingRecords.splice(index - syncedRecords.length, 1);
-        setPendingRecords(pendingRecords);
-        renderTable();
-      });
+        // 修改
+        tr.querySelectorAll('button')[0].addEventListener('click', () => {
+          // 彈跳視窗
 
-      // 收餅勾選即時更新
-      tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
-        record.receivedCake = e.target.checked;
-        if (index < syncedRecords.length) {
-          alert('已同步資料不可直接修改（如需此功能請擴充 API）');
-          return;
-        }
-        setPendingRecords(pendingRecords);
-      });
+          let modal = document.getElementById('editModal');
+          if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'editModal';
+            modal.style.position = 'fixed';
+            modal.style.top = '0';
+            modal.style.left = '0';
+            modal.style.width = '100vw';
+            modal.style.height = '100vh';
+            modal.style.background = 'rgba(0,0,0,0.3)';
+            modal.style.display = 'flex';
+            modal.style.alignItems = 'center';
+            modal.style.justifyContent = 'center';
+            // 動態分類選項
+            let categoryOptions = '';
+            const loginUserVal = localStorage.getItem('loginUser');
+            if (loginUserVal === 'boy') {
+              categoryOptions += '<option value="新郎親友">新郎親友</option>';
+              categoryOptions += '<option value="男方父母朋友">男方父母朋友</option>';
+            } else if (loginUserVal === 'girl') {
+              categoryOptions += '<option value="新娘親友">新娘親友</option>';
+              categoryOptions += '<option value="女方父母朋友">女方父母朋友</option>';
+            } else {
+              categoryOptions += '<option value="新娘親友">新娘親友</option>';
+              categoryOptions += '<option value="新郎親友">新郎親友</option>';
+              categoryOptions += '<option value="男方父母朋友">男方父母朋友</option>';
+              categoryOptions += '<option value="女方父母朋友">女方父母朋友</option>';
+            }
+            modal.innerHTML = `
+            <div style="background:#fff;padding:2rem;border-radius:1rem;min-width:300px;max-width:90vw;">
+              <h3 class="text-xl font-bold mb-4">修改紀錄</h3>
+              <div class="flex flex-col gap-2">
+                <input id="editName" type="text" class="p-2 border rounded" placeholder="姓名" />
+                <input id="editAmount" type="number" class="p-2 border rounded" placeholder="金額" />
+                <select id="editCategory" class="p-2 border rounded">${categoryOptions}</select>
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" id="editReceivedCake" /> 收餅
+                </label>
+                <input id="editNote" type="text" class="p-2 border rounded" placeholder="備註" />
+              </div>
+              <div class="flex gap-2 mt-4">
+                <button id="editSaveBtn" class="bg-blue-500 text-white px-4 py-2 rounded">儲存</button>
+                <button id="editCancelBtn" class="bg-gray-400 text-white px-4 py-2 rounded">取消</button>
+              </div>
+              <div id="editMsg" class="text-red-500 mt-2"></div>
+            </div>
+          `;
+            document.body.appendChild(modal);
+          } else {
+            // 若已存在，動態更新分類選項
+            const editCategory = modal.querySelector('#editCategory');
+            if (editCategory) {
+              let categoryOptions = '';
+              const loginUserVal = localStorage.getItem('loginUser');
+              if (loginUserVal === 'boy') {
+                categoryOptions += '<option value="新郎親友">新郎親友</option>';
+                categoryOptions += '<option value="男方父母朋友">男方父母朋友</option>';
+              } else if (loginUserVal === 'girl') {
+                categoryOptions += '<option value="新娘親友">新娘親友</option>';
+                categoryOptions += '<option value="女方父母朋友">女方父母朋友</option>';
+              } else {
+                categoryOptions += '<option value="新娘親友">新娘親友</option>';
+                categoryOptions += '<option value="新郎親友">新郎親友</option>';
+                categoryOptions += '<option value="男方父母朋友">男方父母朋友</option>';
+                categoryOptions += '<option value="女方父母朋友">女方父母朋友</option>';
+              }
+              editCategory.innerHTML = categoryOptions;
+            }
+          }
+          modal.style.display = 'flex';
+          // 填入原資料
+          document.getElementById('editName').value = record.name;
+          document.getElementById('editAmount').value = record.amount;
+          document.getElementById('editCategory').value = record.category;
+          document.getElementById('editReceivedCake').checked = record.receivedCake;
+          document.getElementById('editNote').value = record.note;
+          document.getElementById('editMsg').textContent = '';
 
-      recordTable.appendChild(tr);
+          document.getElementById('editCancelBtn').onclick = () => {
+            modal.style.display = 'none';
+          };
+
+          document.getElementById('editSaveBtn').onclick = async () => {
+            const newName = document.getElementById('editName').value.trim();
+            const newAmount = parseInt(document.getElementById('editAmount').value, 10);
+            const newCategory = document.getElementById('editCategory').value;
+            const newReceivedCake = document.getElementById('editReceivedCake').checked;
+            const newNote = document.getElementById('editNote').value.trim();
+            if (!newName || !newAmount || !newCategory) {
+              document.getElementById('editMsg').textContent = '請填寫完整資訊';
+              return;
+            }
+            try {
+              // 刪除原資料
+              const delRes = await fetch(API_URL + record.id, { method: 'DELETE' });
+              if (!delRes.ok) throw new Error('刪除失敗');
+              // 新增新資料
+              const addRes = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: newName,
+                  amount: newAmount,
+                  category: newCategory,
+                  received_cake: newReceivedCake,
+                  note: newNote
+                })
+              });
+              if (!addRes.ok) throw new Error('新增失敗');
+              modal.style.display = 'none';
+              await renderTable();
+            } catch (e) {
+              document.getElementById('editMsg').textContent = '修改失敗，請稍後再試';
+            }
+          };
+        });
+
+        // 收餅勾選即時更新
+        tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
+          record.receivedCake = e.target.checked;
+          if (index < apiRecords.length) {
+            alert('已同步資料不可直接修改（如需此功能請擴充 API）');
+            return;
+          }
+          setPendingRecords(pendingRecords);
+        });
+
+        recordTable.appendChild(tr);
+      });
+      totalAmountEl.textContent = total;
+    }
+
+    // 登入流程
+    function showMain() {
+      loginBox.style.display = 'none';
+      mainBox.style.display = '';
+      // 動態主標題
+      const loginUserVal = localStorage.getItem('loginUser');
+      const titleEl = mainBox.querySelector('h1');
+      if (titleEl) {
+        if (loginUserVal === 'boy') {
+          titleEl.textContent = '🎁 新郎禮金簿';
+        } else if (loginUserVal === 'girl') {
+          titleEl.textContent = '🎁 新娘禮金簿';
+        } else {
+          titleEl.textContent = '🎁 禮金簿';
+        }
+      }
+      // 動態分類選項
+      const categoryInput = document.getElementById('category');
+      if (categoryInput) {
+        categoryInput.innerHTML = '';
+        if (loginUserVal === 'boy') {
+          categoryInput.innerHTML += '<option value="新郎親友">新郎親友</option>';
+          categoryInput.innerHTML += '<option value="男方父母朋友">男方父母朋友</option>';
+        } else if (loginUserVal === 'girl') {
+          categoryInput.innerHTML += '<option value="新娘親友">新娘親友</option>';
+          categoryInput.innerHTML += '<option value="女方父母朋友">女方父母朋友</option>';
+        } else {
+          categoryInput.innerHTML += '<option value="新娘親友">新娘親友</option>';
+          categoryInput.innerHTML += '<option value="新郎親友">新郎親友</option>';
+          categoryInput.innerHTML += '<option value="男方父母朋友">男方父母朋友</option>';
+          categoryInput.innerHTML += '<option value="女方父母朋友">女方父母朋友</option>';
+        }
+      }
+      renderTable();
+    }
+    function showLogin() {
+      loginBox.style.display = '';
+      mainBox.style.display = 'none';
+      loginUser.value = '';
+      loginPass.value = '';
+      loginMsg.textContent = '';
+    }
+    function isLoggedIn() {
+      return localStorage.getItem('loginUser');
+    }
+    function logout() {
+      localStorage.removeItem('loginUser');
+      showLogin();
+    }
+
+
+    function doLogin() {
+      const user = loginUser.value.trim();
+      const pass = loginPass.value.trim();
+      if (!USERS[user] || rot13(USERS[user]) !== pass) {
+        loginMsg.textContent = '帳號或密碼錯誤';
+        return;
+      }
+      localStorage.setItem('loginUser', user);
+      showMain();
+    }
+    loginBtn.addEventListener('click', doLogin);
+    loginUser.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') doLogin();
     });
-    totalAmountEl.textContent = total;
-  }
-
-  document.querySelectorAll('.quick-amount').forEach(btn => {
-    btn.addEventListener('click', () => amountInput.value = btn.textContent);
-  });
-
-  addBtn.addEventListener('click', () => {
-    const name = document.getElementById('name').value.trim();
-    const amount = amountInput.value.trim();
-    const note = document.getElementById('note').value.trim();
-    const category = categoryInput.value;
-    const receivedCake = receivedCakeInput.checked;
-    if (!name || !amount) return alert('請輸入姓名和金額');
-    addPendingRecord({ name, amount, note, category, receivedCake });
-    renderTable();
-    document.getElementById('name').value = '';
-    amountInput.value = '';
-    document.getElementById('note').value = '';
-    receivedCakeInput.checked = false;
-  });
-
-  exportBtn.addEventListener('click', () => {
-    const records = [...getSyncedRecords(), ...getPendingRecords()];
-    if (records.length === 0) return alert('沒有紀錄可匯出');
-    let csvContent = "\uFEFF";
-    csvContent += "編號,姓名,金額,分類,備註,收餅\n";
-    records.forEach((r, i) => {
-      csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
+    loginPass.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') doLogin();
     });
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  });
 
-  // 同步 pending 到 API（每 10 秒自動嘗試）
-  async function syncPendingToApi() {
-    let pending = getPendingRecords();
-    let syncedRecords = getSyncedRecords();
-    for (let i = 0; i < pending.length; i++) {
-      if (pending[i].synced) continue; // 只送未同步的
+    // 登出按鈕
+    const logoutBtn = document.createElement('button');
+    logoutBtn.textContent = '登出';
+    logoutBtn.className = 'bg-gray-400 text-white px-3 py-1 rounded float-right mb-2';
+    logoutBtn.onclick = logout;
+    mainBox.prepend(logoutBtn);
+
+    // 初始判斷
+    if (isLoggedIn()) {
+      showMain();
+    } else {
+      showLogin();
+    }
+
+    document.querySelectorAll('.quick-amount').forEach(btn => {
+      btn.addEventListener('click', () => amountInput.value = btn.textContent);
+    });
+
+    addBtn.addEventListener('click', async () => {
+      const name = document.getElementById('name').value.trim();
+      const amount = parseInt(amountInput.value, 10);
+      const category = categoryInput.value;
+      const receivedCake = receivedCakeInput.checked;
+      const note = document.getElementById('note').value.trim();
+      if (!name || !amount || !category) {
+        alert('請填寫完整資訊');
+        return;
+      }
+      const record = { name, amount, category, received_cake: receivedCake, note };
+      // 寫入 API
       try {
         const res = await fetch(API_URL, {
           method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify(pending[i]),
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
         });
-        let result;
-        try {
-          result = await res.json();
-        } catch {
-          result = { success: true }; // no-cors fallback
-        }
-        if (result.success) {
-          pending[i].synced = true; // 標記已同步
-          syncedRecords.push({ ...pending[i] }); // 保留完整資料
-        }
+        if (!res.ok) throw new Error('API 寫入失敗');
+        await renderTable();
+        amountInput.value = '';
+        document.getElementById('name').value = '';
+        document.getElementById('note').value = '';
+        receivedCakeInput.checked = false;
       } catch (e) {
-        // 可記錄錯誤狀態
+        alert('寫入失敗，請稍後再試');
       }
-    }
-    // 清除已同步的 pending
-    pending = pending.filter(r => !r.synced);
-    setPendingRecords(pending);
-    setSyncedRecords(syncedRecords);
-    renderTable();
-  }
-  setInterval(syncPendingToApi, 10000);
+    });
 
-  // 首次啟動時，先載入 API 紀錄到 localStorage
-  async function init() {
-    const apiRecords = await fetchApiRecords();
-    setSyncedRecords(apiRecords);
-    renderTable();
-  }
-  init();
+    exportBtn.addEventListener('click', () => {
+      const records = [...getSyncedRecords(), ...getPendingRecords()];
+      if (records.length === 0) return alert('沒有紀錄可匯出');
+      let csvContent = "\uFEFF";
+      csvContent += "編號,姓名,金額,分類,備註,收餅\n";
+      records.forEach((r, i) => {
+        csvContent += `${i + 1},${r.name},${r.amount},${r.category},${r.note},${r.receivedCake ? '已收' : '未收'}\n`;
+      });
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `禮金簿_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+
+    // 同步 pending 到 API（每 10 秒自動嘗試）
+    async function renderTable() {
+      const syncedRecords = getSyncedRecords();
+      const pendingRecords = getPendingRecords();
+      let apiRecords = [];
+      let selectedCategories = null;
+      const loginUserVal = localStorage.getItem('loginUser');
+      if (loginUserVal === 'admin') {
+        // 產生多選分類 UI
+        let filterBox = document.getElementById('adminFilterBox');
+        if (!filterBox) {
+          filterBox = document.createElement('div');
+          filterBox.id = 'adminFilterBox';
+          filterBox.className = 'mb-4 flex gap-2 flex-wrap';
+          const categories = ['新娘親友','新郎親友','男方父母朋友','女方父母朋友'];
+          categories.forEach(cat => {
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-1';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = cat;
+            checkbox.checked = true;
+            checkbox.className = 'admin-category-checkbox';
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(cat));
+            filterBox.appendChild(label);
+          });
+          mainBox.insertBefore(filterBox, mainBox.children[2]);
+          filterBox.addEventListener('change', renderTable);
+        }
+        // 取得選取的分類
+        selectedCategories = Array.from(document.querySelectorAll('.admin-category-checkbox:checked')).map(cb => cb.value);
+      } else {
+        // 非 admin 移除 filterBox
+        const filterBox = document.getElementById('adminFilterBox');
+        if (filterBox) filterBox.remove();
+      }
+      try {
+        apiRecords = await fetchApiRecords(selectedCategories);
+        setSyncedRecords(apiRecords);
+      } catch {
+        apiRecords = syncedRecords;
+      }
+      const allRecords = [...apiRecords, ...pendingRecords].reverse();
+      recordTable.innerHTML = '';
+      let total = 0;
+      allRecords.forEach((record, index) => {
+        total += Number(record.amount) || 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+        <td class="p-3">${index + 1}</td>
+        <td class="p-3">${record.name}</td>
+        <td class="p-3">${record.amount}</td>
+        <td class="p-3">${record.category}</td>
+        <td class="p-3">${record.note}</td>
+        <td class="p-3 text-center">
+          <label>
+            <input type="checkbox" class="cake-checkbox" ${record.receivedCake ? 'checked' : ''}/> 收餅
+          </label>
+          <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
+          <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
+          ${index >= apiRecords.length ? (record.synced ? '<span style="color:green">(已同步)</span>' : '<span style="color:red">(待同步)</span>') : ''}
+        </td>
+      `;
+        // ...existing code...
+        recordTable.appendChild(tr);
+      });
+      totalAmountEl.textContent = total;
+    }
+      renderTable();
+    init();
   </script>
 </body>
+
 </html>
