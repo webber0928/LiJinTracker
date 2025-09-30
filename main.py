@@ -13,6 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from dotenv import load_dotenv
 import os
+import uuid
 
 load_dotenv()
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
@@ -24,12 +25,14 @@ Base = declarative_base()
 class GiftRecord(Base):
     __tablename__ = "gift_records"
     id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String(36), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     name = Column(String(50), nullable=False)
     amount = Column(Integer, nullable=False)
     category = Column(String(50), nullable=False)
     note = Column(String(255), nullable=True)
     received_cake = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_deleted = Column(Boolean, default=False)
 
 Base.metadata.create_all(bind=engine)
@@ -43,6 +46,9 @@ class GiftRecordCreate(BaseModel):
 
 class GiftRecordOut(GiftRecordCreate):
     id: int
+    uuid: str
+    created_at: datetime
+    updated_at: datetime
 
 app = FastAPI(docs_url=None)  # 關閉預設 /docs
 
@@ -104,33 +110,34 @@ def read_records(category: Optional[str] = Query(None)):
     db.close()
     return records
 
-@app.get("/records/{record_id}", response_model=GiftRecordOut)
-def read_record(record_id: int):
+@app.get("/records/{uuid}", response_model=GiftRecordOut)
+def read_record(uuid: str):
     db = SessionLocal()
-    record = db.query(GiftRecord).filter(GiftRecord.id == record_id).first()
+    record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
     db.close()
     if not record:
         raise HTTPException(status_code=404, detail="Record not found")
     return record
 
-@app.put("/records/{record_id}", response_model=GiftRecordOut)
-def update_record(record_id: int, record: GiftRecordCreate):
+@app.put("/records/{uuid}", response_model=GiftRecordOut)
+def update_record(uuid: str, record: GiftRecordCreate):
     db = SessionLocal()
-    db_record = db.query(GiftRecord).filter(GiftRecord.id == record_id).first()
+    db_record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
     if not db_record:
         db.close()
         raise HTTPException(status_code=404, detail="Record not found")
     for key, value in record.dict().items():
         setattr(db_record, key, value)
+    db_record.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(db_record)
     db.close()
     return db_record
 
-@app.delete("/records/{record_id}")
-def delete_record(record_id: int):
+@app.delete("/records/{uuid}")
+def delete_record(uuid: str):
     db = SessionLocal()
-    db_record = db.query(GiftRecord).filter(GiftRecord.id == record_id).first()
+    db_record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
     if not db_record:
         db.close()
         raise HTTPException(status_code=404, detail="Record not found")
