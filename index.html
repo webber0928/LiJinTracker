@@ -92,7 +92,7 @@
     function rot13(s) {
       return s.replace(/[a-zA-Z]/g, function (c) { let a = c.charCodeAt(0), b = c <= 'Z' ? 90 : 122; a += 13; return String.fromCharCode(b >= a ? a : a - 26); });
     }
-    const API_BASE = 'http://20.243.195.247:8080';
+    const API_BASE = 'https://lijintracker.onrender.com/api';
     const API_URL = API_BASE + '/records/';
     const STORAGE_KEY = 'giftRecords';
     const PENDING_KEY = 'pendingGiftRecords';
