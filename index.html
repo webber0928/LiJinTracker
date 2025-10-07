@@ -168,6 +168,7 @@
       // 動態主標題
       const loginUserVal = localStorage.getItem('loginUser');
       const titleEl = mainBox.querySelector('h1');
+      const totalAmountBox = document.getElementById('totalAmountBox');
       if (titleEl) {
         if (loginUserVal === 'boy') {
           titleEl.textContent = '🎁 新郎禮金簿';
@@ -175,6 +176,7 @@
           titleEl.textContent = '🎁 新娘禮金簿';
         } else {
           titleEl.textContent = '🎁 禮金簿';
+          totalAmountBox.style.display = '';
         }
       }
       // 動態分類選項
@@ -346,13 +348,13 @@
         total += Number(record.amount) || 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
-        <td class="p-3">${index + 1}</td>
+        <td class="p-3">${allRecords.length - index}</td>
         <td class="p-3">${record.name}</td>
         <td class="p-3">${record.amount}</td>
         <td class="p-3">${record.category}</td>
         <td class="p-3">${record.note}</td>
         <td class="p-3 text-center">
-          <label>
+          <label style="display: none;">
             <input type="checkbox" class="cake-checkbox" ${record.receivedCake ? 'checked' : ''}/> 收餅
           </label>
           <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
