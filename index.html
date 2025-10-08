@@ -354,8 +354,8 @@
         <td class="p-3">${record.category}</td>
         <td class="p-3">${record.note}</td>
         <td class="p-3 text-center">
-          <label style="display: none;">
-            <input type="checkbox" class="cake-checkbox" ${record.receivedCake ? 'checked' : ''}/> 收餅
+          <label>
+            ${record.receivedCake ? '☑️' : '🔲'}收餅
           </label>
           <button class="bg-yellow-400 text-white px-2 py-1 rounded ml-1">修改</button>
           <button class="bg-red-500 text-white px-2 py-1 rounded ml-1">刪除</button>
@@ -501,14 +501,14 @@
           };
         });
         // 收餅勾選即時更新
-        tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
-          record.receivedCake = e.target.checked;
-          if (index < apiRecords.length) {
-            alert('已同步資料不可直接修改（如需此功能請擴充 API）');
-            return;
-          }
-          setPendingRecords(pendingRecords);
-        });
+        // tr.querySelector('.cake-checkbox').addEventListener('change', (e) => {
+        //   record.receivedCake = e.target.checked;
+        //   if (index < apiRecords.length) {
+        //     alert('已同步資料不可直接修改（如需此功能請擴充 API）');
+        //     return;
+        //   }
+        //   setPendingRecords(pendingRecords);
+        // });
         recordTable.appendChild(tr);
       });
       totalAmountEl.textContent = total;
