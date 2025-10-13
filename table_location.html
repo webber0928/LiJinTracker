@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>吳許聯姻桌次圖</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定字體為優雅的無襯線體，並增加回退字體 */
+        body {
+            font-family: "Inter", "Microsoft YaHei", "PingFang TC", "Helvetica Neue", sans-serif;
+            background-color: #f7f3e8; /* 淺米白/象牙色背景 */
+        }
+        /* 自訂金色的陰影效果 */
+        .gold-shadow {
+            box-shadow: 0 4px 6px -1px rgba(181, 131, 48, 0.4), 0 2px 4px -2px rgba(181, 131, 48, 0.2);
+        }
+        /* 桌位圖容器，設定固定寬高比，確保視覺排版不跑掉 */
+        #seating-map-container {
+            width: 100%;
+            padding-top: 150%; /* 設置寬高比為 2:3 (高度是寬度的 150%) */
+            position: relative;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            max-width: 600px; /* 限制最大寬度，避免在超大螢幕上過大 */
+            margin-left: auto;
+            margin-right: auto;
+        }
+        /* 所有絕對定位的元素都放在這裡 */
+        #seating-map-inner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 單一桌次卡片 (圓形) 樣式 */
+        .table-card {
+            position: absolute;
+            width: 15%; /* 圓形直徑佔容器寬度的 14% */
+            height: 9.3%; /* 保持圓形，因為容器是 2:3 比例 (14 / 150 * 100 ≈ 9.3) */
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2px;
+            font-size: 0.7rem; /* 適用於小螢幕 */
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            transform: translate(-50%, -50%); /* 確保定位點在圓心 */
+        }
+        .table-card:hover {
+            transform: translate(-50%, -50%) scale(1.08);
+            box-shadow: 0 0 15px rgba(181, 131, 48, 0.6);
+        }
+        .table-number {
+            font-weight: bold;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .table-name {
+            line-height: 1.2;
+            font-size: 0.7rem;
+            opacity: 0.9;
+        }
+
+        /* 主桌特別放大 */
+        .table-card-main {
+            width: 18%; 
+            height: 12%; 
+            background-color: #c53030 !important; /* 紅色 */
+            color: white !important;
+        }
+
+        /* 響應式字體調整 */
+        @media (min-width: 640px) {
+            .table-number { font-size: 1.2rem; }
+            .table-name { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex justify-center items-start">
+
+    <div id="app" class="w-full max-w-5xl bg-white rounded-xl shadow-2xl p-6 md:p-10 lg:p-12">
+
+        <!-- 標題區 -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[#b58330] mb-2 tracking-wider">
+                吳許府 囍宴
+            </h1>
+            <div class="h-1 w-24 bg-[#b58330] mx-auto mt-4 rounded-full"></div>
+        </header>
+
+        <!-- 查詢介面 -->
+        <section class="mb-8">
+            <!-- <div class="relative">
+                <input
+                    type="text"
+                    id="searchInput"
+                    oninput="filterTables()"
+                    placeholder="請輸入群組名稱或桌號（如：D-Link, 育成高中, 18）"
+                    class="w-full p-4 pl-12 text-gray-700 border-2 border-gray-300 focus:border-[#b58330] focus:ring-1 focus:ring-[#b58330] rounded-lg shadow-inner transition duration-150"
+                >
+                <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div> -->
+            <p id="searchResult" class="mt-4 text-center text-xl font-semibold text-gray-600"></p>
+        </section>
+
+        <!-- 桌位圖區 (新版視覺化佈局) -->
+        <section>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-l-4 border-[#b58330] pl-3">宴會廳佈局</h2>
+
+            <div id="seating-map-container" class="gold-shadow">
+                <div id="seating-map-inner">
+                    <!-- 舞台/螢幕區 -->
+                    <div class="absolute left-1/2 top-0 transform -translate-x-1/2 w-4/5 h-8 bg-gray-300 rounded-b-lg flex items-center justify-center text-sm font-semibold text-gray-700 shadow-lg">
+                        舞台
+                    </div>
+                    <!-- 中央走道 -->
+                    <div class="absolute left-1/2 top-[12%] transform -translate-x-1/2 w-[6%] h-[80%] bg-gray-200 rounded-b-xl shadow-inner">
+                    </div>
+                    <!-- 故宮晶華標誌 -->
+                    <!-- <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center">
+                        <p class="text-2xl font-serif text-gray-800 mb-1">故宮晶華</p>
+                        <p class="text-xs text-gray-600">Silks Palace at National Palace Museum</p>
+                    </div> -->
+                </div>
+            </div>
+
+        </section>
+        
+    </div>
+
+    <script>
+        // 宴會桌次資料，包含桌號、名稱和 [left %, top %] 的定位座標
+        const seatingData = [
+            // 主桌區 (約 15% Y 軸)
+            { table: 18, name: "主桌", pos: [50, 15], isSpecial: true },
+            { table: 9, name: "吳家(素)", pos: [65, 25], isSpecial: true },
+            { table: 19, name: "吳家-1", pos: [82, 25] },
+            { table: 10, name: "我的<br>表姊表弟", pos: [33, 25] },
+            { table: 20, name: "明寬淑娟<br>的捧油", pos: [16, 25] },
+
+            // 中間區塊 1 (約 40% Y 軸)
+            { table: 2, name: "仁大好趴呢", pos: [40, 40] },
+            { table: 12, name: "宏碁雲架構-1", pos: [25, 40] },
+            { table: 22, name: "央大的啦", pos: [10, 40] },
+            { table: 1, name: "賴世家族", pos: [60, 40] },
+            { table: 11, name: "吳家-3", pos: [75, 40] },
+            { table: 21, name: "吳家-2", pos: [90, 40] },
+
+            // 中間區塊 2 (約 55% Y 軸)
+            { table: 4, name: "大同寶寶", pos: [40, 55] },
+            { table: 14, name: "宏碁雲架構-2", pos: [25, 55] },
+            { table: 24, name: "綠捷", pos: [10, 55] },
+            { table: 3, name: "育成高中1", pos: [60, 55] },
+            { table: 13, name: "育成高中2", pos: [75, 55] },
+            { table: 23, name: "中正國中", pos: [90, 55] },
+
+            // 後排區塊 1 (約 70% Y 軸)
+            { table: 6, name: "動八家人-1", pos: [40, 70] },
+            { table: 16, name: "611結婚戰隊", pos: [25, 70] },
+            { table: 26, name: "D-Link", pos: [10, 70] },
+            { table: 5, name: "純利大哥", pos: [60, 70] },
+            { table: 15, name: "新和國小", pos: [75, 70] },
+            { table: 25, name: "革命夥伴", pos: [90, 70] },
+
+            // 最後排 (約 85% Y 軸)
+            { table: 8, name: "動八家人-2", pos: [40, 85] },
+            { table: 28, name: "預備桌", pos: [25, 85] }, // 假設是工作人員桌
+            { table: 7, name: "長榮大學", pos: [60, 85] },
+            { table: 17, name: "Webzz &<br> 球隊戰友", pos: [75, 85] },
+            { table: 27, name: "預備桌", pos: [90, 85] } // 預備桌
+        ];
+
+        // 獲取 DOM 元素
+        const seatingMapInner = document.getElementById('seating-map-inner');
+        const searchInput = document.getElementById('searchInput');
+        const searchResult = document.getElementById('searchResult');
+
+        /**
+         * 渲染單一桌次的卡片 HTML (圓形)
+         * @param {Object} data - 包含 table, name, pos 的物件
+         * @param {boolean} isHighlighted - 是否需要高亮顯示
+         */
+        function renderTableCard(data, isHighlighted = false) {
+            const isMainTable = data.table === 18;
+            const isVeggie = data.name.includes('(素)');
+            
+            // 基礎樣式
+            let cardClasses = 'table-card shadow-lg transition duration-300 ease-in-out';
+            let tableNumClasses = 'table-number';
+            
+            // 設定位置
+            const [left, top] = data.pos;
+            const style = `left: ${left}%; top: ${top}%;`;
+
+            if (isHighlighted) {
+                // 高亮樣式：醒目的金色光環
+                cardClasses += ' bg-yellow-300 text-gray-800 ring-4 ring-offset-2 ring-[#b58330]';
+            } else if (isMainTable) {
+                // 主桌樣式
+                cardClasses += ' table-card-main shadow-2xl';
+            } else if (isVeggie) {
+                // 素食桌樣式
+                cardClasses += ' bg-green-200 text-green-800 border-2 border-green-500 shadow-md';
+            } else {
+                // 一般桌次樣式
+                cardClasses += ' bg-pink-200 text-red-800 border border-pink-300 shadow-md';
+            }
+
+            return `
+                <div class="${cardClasses}" style="${style}">
+                    <div class="${tableNumClasses}">${data.table}</div>
+                    <div class="table-name">${data.name}</div>
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染所有桌次到地圖中
+         * @param {string} highlightQuery - 需要高亮的查詢關鍵字
+         */
+        function renderTableMap(highlightQuery = "") {
+            // 清空除了舞台和走道之外的內容
+            seatingMapInner.querySelectorAll('.table-card').forEach(e => e.remove());
+
+            seatingData
+                .map(data => {
+                    const isHighlighted = highlightQuery && (
+                        data.name.toLowerCase().includes(highlightQuery.toLowerCase()) || 
+                        String(data.table) === highlightQuery
+                    );
+                    return renderTableCard(data, isHighlighted);
+                })
+                .forEach(html => {
+                    seatingMapInner.insertAdjacentHTML('beforeend', html);
+                });
+        }
+
+        /**
+         * 處理搜尋輸入並過濾或高亮顯示結果
+         */
+        function filterTables() {
+            const query = searchInput.value.trim();
+            
+            if (query.length < 1) {
+                // 如果搜尋框為空，重設為顯示所有桌次
+                searchResult.innerHTML = '';
+                renderTableMap();
+                return;
+            }
+
+            const lowerQuery = query.toLowerCase();
+            const matchedTables = seatingData.filter(data =>
+                data.name.toLowerCase().includes(lowerQuery) || 
+                String(data.table) === query
+            );
+
+            if (matchedTables.length > 0) {
+                // 如果找到匹配項
+                const tableNumbers = matchedTables.map(m => m.table).join('號、');
+                searchResult.innerHTML = `
+                    <p class="text-green-700">✅ 查詢成功！</p>
+                    <p class="mt-2 text-2xl font-extrabold text-[#b58330]">
+                        您的桌號可能是：<span class="text-red-600">${tableNumbers}號</span>
+                    </p>
+                    <p class="text-sm text-gray-500 mt-1">
+                        請在地圖上尋找高亮顯示的圓圈。
+                    </p>
+                `;
+                // 重新渲染地圖，高亮所有匹配的桌次
+                renderTableMap(query);
+            } else {
+                // 未找到匹配項
+                searchResult.innerHTML = `
+                    <p class="text-red-500">❌ 找不到包含「${query}」的桌次或群組名稱，請重新確認！</p>
+                `;
+                renderTableMap(); // 保持顯示所有表格
+            }
+        }
+
+        // 初始化：頁面載入時渲染所有桌次
+        window.onload = function() {
+            renderTableMap();
+        }
+
+    </script>
+</body>
+</html>
