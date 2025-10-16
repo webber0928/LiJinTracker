@@ -588,6 +588,7 @@
             // 停止輪詢
             clearInterval(intervalId);
             const loginUserVal = localStorage.getItem('loginUser');
+            renderTable()
             if (loginUserVal === 'boy') {
               await loadGuestListBoy(); 
             } else if (loginUserVal === 'girl') {
