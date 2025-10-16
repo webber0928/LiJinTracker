@@ -539,6 +539,44 @@
       }
     }
 
+    async function loadGuestGirl() {
+      try {
+        const res = await fetch(API_BASE + '/girl');
+        if (!res.ok) throw new Error('無法取得來賓名單');
+        const names = await res.json(); // 假設是 ["小明", "小美", "小華"]
+        
+        const datalist = document.getElementById('guestList');
+        datalist.innerHTML = ''; // 清空舊的
+        names.forEach(name => {
+          const option = document.createElement('option');
+          option.value = name;
+          datalist.appendChild(option);
+        });
+        console.log('✅ 已載入來賓名單，共', names.length, '筆');
+      } catch (err) {
+        console.log('❌ 名單載入失敗：', err);
+      }
+    }
+
+    async function loadGuestListBoy() {
+      try {
+        const res = await fetch(API_BASE + '/boy');
+        if (!res.ok) throw new Error('無法取得來賓名單');
+        const names = await res.json(); // 假設是 ["小明", "小美", "小華"]
+        
+        const datalist = document.getElementById('guestList');
+        datalist.innerHTML = ''; // 清空舊的
+        names.forEach(name => {
+          const option = document.createElement('option');
+          option.value = name;
+          datalist.appendChild(option);
+        });
+        console.log('✅ 已載入來賓名單，共', names.length, '筆');
+      } catch (err) {
+        console.log('❌ 名單載入失敗：', err);
+      }
+    }
+
     async function waitForServerAndStart() {
       console.log('🔄 檢查伺服器中...');
     
@@ -549,7 +587,15 @@
           if (res.ok) {
             // 停止輪詢
             clearInterval(intervalId);
-            await loadGuestList(); // ← 這裡加上
+            const loginUserVal = localStorage.getItem('loginUser');
+            if (loginUserVal === 'boy') {
+              await loadGuestListBoy(); 
+            } else if (loginUserVal === 'girl') {
+              await loadGuestListGirl(); 
+            } else {
+              await loadGuestList(); // ← 這裡加上
+            }
+            
           } else {
             console.log('⚠️ 伺服器回應錯誤狀態：', res.status);
           }
