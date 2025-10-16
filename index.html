@@ -539,7 +539,7 @@
       }
     }
 
-    async function loadGuestGirl() {
+    async function loadGuestListGirl() {
       try {
         const res = await fetch(API_BASE + '/girl');
         if (!res.ok) throw new Error('無法取得來賓名單');
