@@ -31,7 +31,7 @@
       <div class="grid grid-cols-2 gap-3">
         <!-- <input id="name" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded" /> -->
         <input id="name" list="guestList" type="text" placeholder="來賓姓名" class="w-full p-2 border rounded" />
-        <datalist id="guestList"></datalist>
+        <datalist style="display: none" id="guestList"></datalist>
         <input id="amount" type="number" placeholder="金額" class="w-full p-2 border rounded" />
       </div>
       <!-- 快速金額按鈕 -->
@@ -534,7 +534,7 @@
           datalist.appendChild(option);
         });
             // --- 在 loadGuestList / loadGuestGirl / loadGuestListBoy 成功填入 datalist 後，加上這一行：
-        // initDatalistFallback('name','guestList');
+        initDatalistFallback('name','guestList');
         console.log('✅ 已載入來賓名單，共', names.length, '筆');
       } catch (err) {
         console.log('❌ 名單載入失敗：', err);
@@ -555,7 +555,7 @@
           datalist.appendChild(option);
         });
             // --- 在 loadGuestList / loadGuestGirl / loadGuestListBoy 成功填入 datalist 後，加上這一行：
-        // initDatalistFallback('name','guestList');
+        initDatalistFallback('name','guestList');
         console.log('✅ 已載入來賓名單，共', names.length, '筆');
       } catch (err) {
         console.log('❌ 名單載入失敗：', err);
@@ -576,7 +576,7 @@
           datalist.appendChild(option);
         });
             // --- 在 loadGuestList / loadGuestGirl / loadGuestListBoy 成功填入 datalist 後，加上這一行：
-        // initDatalistFallback('name','guestList');
+        initDatalistFallback('name','guestList');
         console.log('✅ 已載入來賓名單，共', names.length, '筆');
       } catch (err) {
         console.log('❌ 名單載入失敗：', err);
@@ -586,68 +586,68 @@
 
     
     // --- 新增 fallback 函式（貼在 loadGuestListBoy 之後、waitForServerAndStart 之前）
-    // function isTouchiPad() {
-    //   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    // }
+    function isTouchiPad() {
+      return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
     
-    // function initDatalistFallback(inputId, datalistId) {
-    //   if (!isTouchiPad()) return; // 只在需要時啟用
+    function initDatalistFallback(inputId, datalistId) {
+      if (!isTouchiPad()) return; // 只在需要時啟用
     
-    //   const input = document.getElementById(inputId);
-    //   const datalist = document.getElementById(datalistId);
-    //   if (!input || !datalist) return;
+      const input = document.getElementById(inputId);
+      const datalist = document.getElementById(datalistId);
+      if (!input || !datalist) return;
     
-    //   const listBox = document.createElement('div');
-    //   listBox.style.position = 'absolute';
-    //   listBox.style.zIndex = 9999;
-    //   listBox.style.background = '#fff';
-    //   listBox.style.border = '1px solid #ddd';
-    //   listBox.style.maxHeight = '200px';
-    //   listBox.style.overflowY = 'auto';
-    //   listBox.style.display = 'none';
-    //   document.body.appendChild(listBox);
+      const listBox = document.createElement('div');
+      listBox.style.position = 'absolute';
+      listBox.style.zIndex = 9999;
+      listBox.style.background = '#fff';
+      listBox.style.border = '1px solid #ddd';
+      listBox.style.maxHeight = '200px';
+      listBox.style.overflowY = 'auto';
+      listBox.style.display = 'none';
+      document.body.appendChild(listBox);
     
-    //   function position() {
-    //     const rect = input.getBoundingClientRect();
-    //     listBox.style.left = rect.left + 'px';
-    //     listBox.style.top = (rect.bottom + window.scrollY) + 'px';
-    //     listBox.style.width = rect.width + 'px';
-    //   }
+      function position() {
+        const rect = input.getBoundingClientRect();
+        listBox.style.left = rect.left + 'px';
+        listBox.style.top = (rect.bottom + window.scrollY) + 'px';
+        listBox.style.width = rect.width + 'px';
+      }
     
-    //   function showMatches() {
-    //     const q = input.value.trim().toLowerCase();
-    //     const options = Array.from(datalist.querySelectorAll('option')).map(o => o.value);
-    //     const matches = options.filter(v => v.toLowerCase().includes(q)).slice(0, 50);
-    //     listBox.innerHTML = '';
-    //     if (matches.length === 0) {
-    //       listBox.style.display = 'none';
-    //       return;
-    //     }
-    //     matches.forEach(m => {
-    //       const item = document.createElement('div');
-    //       item.textContent = m;
-    //       item.style.padding = '6px 8px';
-    //       item.style.cursor = 'pointer';
-    //       item.addEventListener('click', () => {
-    //         input.value = m;
-    //         listBox.style.display = 'none';
-    //         input.focus();
-    //       });
-    //       item.addEventListener('mouseover', () => item.style.background = '#f0f0f0');
-    //       item.addEventListener('mouseout', () => item.style.background = '');
-    //       listBox.appendChild(item);
-    //     });
-    //     position();
-    //     listBox.style.display = 'block';
-    //   }
+      function showMatches() {
+        const q = input.value.trim().toLowerCase();
+        const options = Array.from(datalist.querySelectorAll('option')).map(o => o.value);
+        const matches = options.filter(v => v.toLowerCase().includes(q)).slice(0, 50);
+        listBox.innerHTML = '';
+        if (matches.length === 0) {
+          listBox.style.display = 'none';
+          return;
+        }
+        matches.forEach(m => {
+          const item = document.createElement('div');
+          item.textContent = m;
+          item.style.padding = '6px 8px';
+          item.style.cursor = 'pointer';
+          item.addEventListener('click', () => {
+            input.value = m;
+            listBox.style.display = 'none';
+            input.focus();
+          });
+          item.addEventListener('mouseover', () => item.style.background = '#f0f0f0');
+          item.addEventListener('mouseout', () => item.style.background = '');
+          listBox.appendChild(item);
+        });
+        position();
+        listBox.style.display = 'block';
+      }
     
-    //   input.addEventListener('input', showMatches);
-    //   input.addEventListener('focus', showMatches);
-    //   window.addEventListener('resize', position);
-    //   document.addEventListener('click', (e) => {
-    //     if (e.target !== input && !listBox.contains(e.target)) listBox.style.display = 'none';
-    //   });
-    // }
+      input.addEventListener('input', showMatches);
+      input.addEventListener('focus', showMatches);
+      window.addEventListener('resize', position);
+      document.addEventListener('click', (e) => {
+        if (e.target !== input && !listBox.contains(e.target)) listBox.style.display = 'none';
+      });
+    }
 
     async function waitForServerAndStart() {
       console.log('🔄 檢查伺服器中...');
