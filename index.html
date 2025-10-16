@@ -518,29 +518,7 @@
       totalAmountEl.textContent = total;
     }
 
-    async function waitForServerAndStart() {
-      console.log('🔄 檢查伺服器中...');
     
-      // 用 setInterval 每秒打一次 /api/hello
-      const intervalId = setInterval(async () => {
-        try {
-          const res = await fetch(API_BASE + '/hello');
-          if (res.ok) {
-            // 停止輪詢
-            clearInterval(intervalId);
-          } else {
-            console.log('⚠️ 伺服器回應錯誤狀態：', res.status);
-          }
-        } catch (err) {
-          console.log('❌ 無法連線，重試中...');
-        }
-      }, 1000);
-    }
-    
-    // 啟動檢查流程
-    waitForServerAndStart();
-
-    // 讀取來賓
     // 抓取來賓姓名清單，並填入 datalist
     async function loadGuestList() {
       try {
@@ -560,6 +538,29 @@
         console.log('❌ 名單載入失敗：', err);
       }
     }
+
+    async function waitForServerAndStart() {
+      console.log('🔄 檢查伺服器中...');
+    
+      // 用 setInterval 每秒打一次 /api/hello
+      const intervalId = setInterval(async () => {
+        try {
+          const res = await fetch(API_BASE + '/hello');
+          if (res.ok) {
+            // 停止輪詢
+            clearInterval(intervalId);
+            await loadGuestList(); // ← 這裡加上
+          } else {
+            console.log('⚠️ 伺服器回應錯誤狀態：', res.status);
+          }
+        } catch (err) {
+          console.log('❌ 無法連線，重試中...');
+        }
+      }, 1000);
+    }
+    
+    // 啟動檢查流程
+    waitForServerAndStart();
 
   </script>
 </body>
