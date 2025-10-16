@@ -200,6 +200,14 @@
           categoryInput.innerHTML += '<option value="女方父母朋友">女方父母朋友</option>';
         }
       }
+      // 載入來賓名單
+      if (loginUserVal === 'boy') {
+        loadGuestListBoy();
+      } else if (loginUserVal === 'girl') {
+        loadGuestListGirl();
+      } else {
+        loadGuestList();
+      }
       renderTable();
     }
     function showLogin() {
