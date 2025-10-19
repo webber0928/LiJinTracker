@@ -119,20 +119,20 @@ def read_record(uuid: str):
         raise HTTPException(status_code=404, detail="Record not found")
     return record
 
-@app.put("/records/{uuid}", response_model=GiftRecordOut)
-def update_record(uuid: str, record: GiftRecordCreate):
-    db = SessionLocal()
-    db_record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
-    if not db_record:
-        db.close()
-        raise HTTPException(status_code=404, detail="Record not found")
-    for key, value in record.dict().items():
-        setattr(db_record, key, value)
-    db_record.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(db_record)
-    db.close()
-    return db_record
+# @app.put("/records/{uuid}", response_model=GiftRecordOut)
+# def update_record(uuid: str, record: GiftRecordCreate):
+#     db = SessionLocal()
+#     db_record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
+#     if not db_record:
+#         db.close()
+#         raise HTTPException(status_code=404, detail="Record not found")
+#     for key, value in record.dict().items():
+#         setattr(db_record, key, value)
+#     db_record.updated_at = datetime.utcnow()
+#     db.commit()
+#     db.refresh(db_record)
+#     db.close()
+#     return db_record
 
 # @app.delete("/records/{uuid}")
 # def delete_record(uuid: str):
