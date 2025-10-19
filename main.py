@@ -134,15 +134,15 @@ def update_record(uuid: str, record: GiftRecordCreate):
     db.close()
     return db_record
 
-@app.delete("/records/{uuid}")
-def delete_record(uuid: str):
-    db = SessionLocal()
-    db_record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
-    if not db_record:
-        db.close()
-        raise HTTPException(status_code=404, detail="Record not found")
-    db_record.is_deleted = True
-    db.commit()
-    db.refresh(db_record)
-    db.close()
-    return {"ok": True}
+# @app.delete("/records/{uuid}")
+# def delete_record(uuid: str):
+#     db = SessionLocal()
+#     db_record = db.query(GiftRecord).filter(GiftRecord.uuid == uuid).first()
+#     if not db_record:
+#         db.close()
+#         raise HTTPException(status_code=404, detail="Record not found")
+#     db_record.is_deleted = True
+#     db.commit()
+#     db.refresh(db_record)
+#     db.close()
+#     return {"ok": True}
